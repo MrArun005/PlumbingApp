@@ -10,9 +10,9 @@ verified by actually running the command, and STATE.md is updated.
 | 03  | Pricing engine (pure, ≥40 tests)          | ✅ DONE   | 100% branch coverage, no I/O imports                      |
 | 04  | Auth + catalog API                        | ✅ DONE   | OTP→session→rotate green; catalog hides quote-only prices |
 | 05  | Booking flow (E2/E3)                      | ✅ DONE   | integration test books → pays → ASSIGNED                  |
-| 06  | Partner app core                          | ⬜ QUEUED | —                                                         |
+| 06  | Partner app core                          | ⬜ QUEUED | API done (WO-08); native app not started                  |
 | 07  | Customer web UI                           | 🔨 WIP    | routes render; inspect-first shows no amount              |
-| 08  | Quotes & materials                        | ⬜ QUEUED | —                                                         |
+| 08  | Quotes & materials                        | ✅ DONE   | >30% flag, PPE block, approve-before-work all tested      |
 | 09  | Dispatch engine + simulator               | ⬜ QUEUED | simulator ≥85% on-time baseline                           |
 | 10  | Emergency tier (E0/E1)                    | ⬜ QUEUED | —                                                         |
 | 11  | Money out (payouts, GST invoices)         | ⬜ QUEUED | —                                                         |

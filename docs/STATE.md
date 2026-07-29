@@ -11,6 +11,21 @@ _Last updated: 2026-07-29_
 
 ## What is DONE
 
+- **WO-08 · On-site quotes + materials** ✅ — the inspect-first price loop
+  - Partner job flow: start → arrive → diagnose → quote → begin-work →
+    finish-work → complete, every hop through `jobMachine`. Arrival needs the
+    customer's code **and** a real PostGIS distance check.
+  - Quotes: itemised labour + material lines priced by the pure engine, bill
+    photo required on materials over ₹500, **ADMIN_REVIEW_FLAG** event when a
+    quote exceeds an up-front estimate by >30%, approve makes the quoted total
+    the booking's real total, decline charges only the visit charge.
+  - Sewer/manhole PPE block verified through the real API: refused → upload
+    proof → allowed.
+  - Only a PENDING quote is actionable (D-012) — a superseded quote cannot be
+    approved.
+  - 20 integration tests. **Known gap:** file uploads take a `fileKey` string;
+    real S3/R2 presigned upload is not wired yet.
+
 - **WO-05 · Booking flow (E2/E3)** ✅
   - **State machines** in `packages/shared/state-machines`: booking + job
     lifecycles declared explicitly, illegal moves throw
