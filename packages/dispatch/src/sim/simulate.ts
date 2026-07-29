@@ -16,7 +16,7 @@
  */
 import { rankCandidates } from '../rank';
 import { ARRIVAL_SLA_MINUTES, ringsFor } from '../rings';
-import type { CandidatePartner, DispatchJob } from '../types';
+import type { CandidatePartner } from '../types';
 import type { Scenario, ScheduledJob } from './scenario';
 
 /**
