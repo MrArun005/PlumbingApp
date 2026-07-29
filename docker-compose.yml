@@ -1,0 +1,33 @@
+# Local development infrastructure only. Production runs on managed services.
+#   docker compose up -d --wait
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: pipefix-postgres
+    environment:
+      POSTGRES_USER: pipefix
+      POSTGRES_PASSWORD: pipefix_dev_pw
+      POSTGRES_DB: pipefix
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pipefix -d pipefix']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: pipefix-redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

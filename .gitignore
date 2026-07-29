@@ -1,0 +1,19 @@
+# deps
+node_modules/
+
+# builds
+dist/
+.turbo/
+*.tsbuildinfo
+
+# env & secrets — never commit real credentials
+.env
+.env.*
+!.env.example
+
+# logs / OS noise
+*.log
+.DS_Store
+
+# test artifacts
+coverage/
