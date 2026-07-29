@@ -7,9 +7,21 @@ _Last updated: 2026-07-29_
 
 ## Current work order
 
-**WO-03 · Pricing engine** — in progress.
+**WO-04 · Auth + catalog API** — next up (not started).
 
 ## What is DONE
+
+- **WO-03 · Pricing engine** ✅
+  - `packages/pricing`: pure `computePrice(input, rules, now)` implementing the
+    fixed 9-step sequence; per-line multipliers/discount allocation
+    (largest-remainder, sums exact) so per-line GST is invoice-reproducible.
+  - IST helpers (fixed +05:30, no Intl); night window wraps midnight;
+    night vs Sunday/holiday takes MAX, never the product.
+  - Surge frozen+capped (AMC Plus cap honoured), E1 fee waiver strictly
+    `> ₹1500`, AMC discount labour-only, coupon after AMC with zero floor.
+  - 54 tests, **100% statement/branch/function/line coverage** (enforced via
+    vitest thresholds in `test:cov`); purity proven by Date.now/Math.random
+    throw-spies. Deps: only `@pipefix/shared` + zod — no I/O imports.
 
 - **WO-02 · Data layer** ✅
   - `packages/db`: full Prisma 5 schema — 40+ models, all money as BigInt
