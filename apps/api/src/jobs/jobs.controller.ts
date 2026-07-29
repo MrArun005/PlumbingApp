@@ -1,10 +1,16 @@
-import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
-import { parseOrThrow } from '@pipefix/shared';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { z } from 'zod';
+import { parseOrThrow, phoneE164In } from '@pipefix/shared';
 import { Caller, CustomerGuard, PartnerGuard } from '../auth/auth.guard';
 import type { AccessClaims } from '../auth/token.service';
 import { JobsService } from './jobs.service';
 import { QuotesService } from './quotes.service';
 import { createQuoteSchema, declineQuoteSchema, otpBodySchema, photoSchema } from './jobs.dto';
+
+const jobListQuerySchema = z.object({
+  scope: z.enum(['active', 'history']).default('active'),
+  phone: phoneE164In.optional(),
+});
 
 /** Partner app: the on-site job flow. */
 @UseGuards(PartnerGuard)
@@ -15,9 +21,15 @@ export class PartnerJobsController {
     private readonly quotes: QuotesService,
   ) {}
 
+  /**
+   * `?scope=history` returns finished jobs (newest first); `?phone=+9199...`
+   * narrows to one customer, which is how "what did I do for them last time?"
+   * gets answered.
+   */
   @Get()
-  async list(@Caller() caller: AccessClaims) {
-    return { jobs: await this.jobs.listForPartner(caller.sub) };
+  async list(@Caller() caller: AccessClaims, @Query() query: unknown) {
+    const q = parseOrThrow(jobListQuerySchema, query ?? {}, 'GET /partner/jobs');
+    return { jobs: await this.jobs.listForPartner(caller.sub, q.scope, q.phone) };
   }
 
   @Post(':id/start')

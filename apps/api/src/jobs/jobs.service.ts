@@ -33,6 +33,12 @@ export interface PartnerJobView {
   urgencyTier: string;
   pricingMode: string;
   customerName: string;
+  /** So the plumber can tap to call. */
+  customerPhone: string;
+  scheduledSlotStart: string | null;
+  completedAt: string | null;
+  /** What was actually billed, once the job is done. */
+  finalTotalLabel: string | null;
   address: {
     line1: string;
     line2: string | null;
@@ -58,17 +64,33 @@ export class JobsService {
     @Inject(LOGGER) private readonly logger: pino.Logger,
   ) {}
 
-  async listForPartner(partnerId: string): Promise<PartnerJobView[]> {
+  /**
+   * The plumber's own job list.
+   *
+   * `scope` decides what comes back:
+   *   'active' (default) — today's work, oldest first, so the top of the list is
+   *                        what to do next
+   *   'history'          — finished and cancelled jobs, newest first, for
+   *                        "what did I do for this customer last time?"
+   */
+  async listForPartner(
+    partnerId: string,
+    scope: 'active' | 'history' = 'active',
+    customerPhone?: string,
+  ): Promise<PartnerJobView[]> {
+    const finished: JobStatus[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW_CUSTOMER', 'NO_SHOW_PARTNER'];
     const jobs = await this.prisma.job.findMany({
       where: {
         partnerId,
-        status: { notIn: ['COMPLETED', 'CANCELLED', 'NO_SHOW_CUSTOMER', 'NO_SHOW_PARTNER'] },
+        status: scope === 'history' ? { in: finished } : { notIn: finished },
+        ...(customerPhone === undefined ? {} : { booking: { user: { phone: customerPhone } } }),
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: scope === 'history' ? { createdAt: 'desc' } : { createdAt: 'asc' },
+      take: scope === 'history' ? 50 : undefined,
       include: {
         booking: {
           include: {
-            user: { select: { name: true } },
+            user: { select: { name: true, phone: true } },
             address: true,
             items: { include: { service: true } },
           },
@@ -85,6 +107,13 @@ export class JobsService {
         urgencyTier: job.booking.urgencyTier,
         pricingMode: job.booking.pricingMode,
         customerName: job.booking.user.name,
+        // The plumber needs to be able to phone the customer and navigate to
+        // them — those are the two things he actually does with this screen.
+        customerPhone: job.booking.user.phone,
+        scheduledSlotStart: job.booking.scheduledSlotStart?.toISOString() ?? null,
+        completedAt: job.completedAt?.toISOString() ?? null,
+        finalTotalLabel:
+          job.booking.finalTotalPaise === null ? null : format(money(job.booking.finalTotalPaise)),
         address: {
           line1: job.booking.address.line1,
           line2: job.booking.address.line2,

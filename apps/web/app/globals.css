@@ -1,0 +1,303 @@
+@import 'tailwindcss';
+
+/*
+ * PipeFix design tokens.
+ *
+ * Everything visual is a token. Components never hardcode a hex value — if you
+ * find yourself typing `#` inside a component, add a token here instead.
+ *
+ * Colour discipline (this is a product rule, not a preference):
+ *   --color-primary  deep pipe-water teal — the default interactive colour
+ *   --color-accent   copper — price / trade moments ONLY, used sparingly
+ *   --color-sos      signal red — the emergency path ONLY, nowhere else
+ *   --color-verify   green — verification badges and money-back credits
+ *
+ * Tailwind v4 emits these as CSS custom properties on :root, so the dark theme
+ * below simply reassigns the variables and every utility follows. The
+ * [data-theme] selectors carry an attribute so they outrank the bare :root
+ * blocks in BOTH directions, regardless of source order.
+ */
+@theme {
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial,
+    'Noto Sans Devanagari', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  /* Ground + ink */
+  --color-bg: #eef3f2;
+  --color-surface: #ffffff;
+  --color-surface-2: #e3ebea;
+  --color-surface-sunk: #dde7e6;
+  --color-ink: #142a31;
+  --color-ink-muted: #4a6169;
+  --color-ink-faint: #6b8189;
+  --color-line: #cbd9d8;
+  --color-line-strong: #a9bfbe;
+
+  /* Brand — pipe-water teal */
+  --color-primary: #0e5a6e;
+  --color-primary-hover: #0b4859;
+  --color-primary-ink: #ffffff;
+  --color-primary-soft: #d7e7ea;
+  --color-primary-soft-ink: #0b4859;
+
+  /* Copper — money and trade moments, used sparingly */
+  --color-accent: #b4562b;
+  --color-accent-soft: #f7e6dc;
+  --color-accent-soft-ink: #8c3f1c;
+
+  /* Signal red — SOS / emergency path exclusively */
+  --color-sos: #d93a2b;
+  --color-sos-hover: #bb2e21;
+  --color-sos-ink: #ffffff;
+  --color-sos-soft: #fbe3e0;
+  --color-sos-soft-ink: #9e2519;
+
+  /* Green — verification, warranty, credits */
+  --color-verify: #1e6b34;
+  --color-verify-soft: #dcece0;
+  --color-verify-soft-ink: #175228;
+
+  /* Neutral pill */
+  --color-neutral-soft: #e3ebea;
+  --color-neutral-soft-ink: #3d545c;
+
+  --color-focus: #0e5a6e;
+
+  /* Type scale — 1.200 ratio off a 16px base, tuned for a 360px phone */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.625rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.625rem;
+  --text-xl: 1.3125rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.9375rem;
+  --text-3xl: 1.8125rem;
+  --text-3xl--line-height: 2.1875rem;
+  --text-4xl: 2.1875rem;
+  --text-4xl--line-height: 2.5rem;
+  --text-5xl: 2.625rem;
+  --text-5xl--line-height: 2.875rem;
+
+  --radius-card: 0.875rem;
+  --radius-control: 0.625rem;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgb(20 42 49 / 0.06), 0 6px 20px -12px rgb(20 42 49 / 0.22);
+  --shadow-lift: 0 2px 4px rgb(20 42 49 / 0.08), 0 14px 32px -18px rgb(20 42 49 / 0.32);
+
+  /* Minimum comfortable tap target on Android. */
+  --spacing-tap: 2.75rem;
+}
+
+/* ── Dark theme ─────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0c1a1f;
+    --color-surface: #12262d;
+    --color-surface-2: #18313a;
+    --color-surface-sunk: #0f2127;
+    --color-ink: #e6f0f0;
+    --color-ink-muted: #a3bcc1;
+    --color-ink-faint: #7f9aa1;
+    --color-line: #23434d;
+    --color-line-strong: #335a66;
+
+    --color-primary: #4fb3c9;
+    --color-primary-hover: #6ec4d7;
+    --color-primary-ink: #04191f;
+    --color-primary-soft: #14343d;
+    --color-primary-soft-ink: #9ad8e4;
+
+    --color-accent: #e08a5c;
+    --color-accent-soft: #3a2318;
+    --color-accent-soft-ink: #f0b391;
+
+    --color-sos: #f05a49;
+    --color-sos-hover: #f5776a;
+    --color-sos-ink: #260703;
+    --color-sos-soft: #3d1610;
+    --color-sos-soft-ink: #ffb3a8;
+
+    --color-verify: #57b273;
+    --color-verify-soft: #16301f;
+    --color-verify-soft-ink: #9fd9b1;
+
+    --color-neutral-soft: #1b3540;
+    --color-neutral-soft-ink: #b3c9cf;
+
+    --color-focus: #7fd3e4;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 20px -12px rgb(0 0 0 / 0.7);
+    --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.45), 0 14px 32px -18px rgb(0 0 0 / 0.8);
+  }
+}
+
+/* Explicit override wins over the media query in both directions. */
+:root[data-theme='dark'] {
+  --color-bg: #0c1a1f;
+  --color-surface: #12262d;
+  --color-surface-2: #18313a;
+  --color-surface-sunk: #0f2127;
+  --color-ink: #e6f0f0;
+  --color-ink-muted: #a3bcc1;
+  --color-ink-faint: #7f9aa1;
+  --color-line: #23434d;
+  --color-line-strong: #335a66;
+
+  --color-primary: #4fb3c9;
+  --color-primary-hover: #6ec4d7;
+  --color-primary-ink: #04191f;
+  --color-primary-soft: #14343d;
+  --color-primary-soft-ink: #9ad8e4;
+
+  --color-accent: #e08a5c;
+  --color-accent-soft: #3a2318;
+  --color-accent-soft-ink: #f0b391;
+
+  --color-sos: #f05a49;
+  --color-sos-hover: #f5776a;
+  --color-sos-ink: #260703;
+  --color-sos-soft: #3d1610;
+  --color-sos-soft-ink: #ffb3a8;
+
+  --color-verify: #57b273;
+  --color-verify-soft: #16301f;
+  --color-verify-soft-ink: #9fd9b1;
+
+  --color-neutral-soft: #1b3540;
+  --color-neutral-soft-ink: #b3c9cf;
+
+  --color-focus: #7fd3e4;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 20px -12px rgb(0 0 0 / 0.7);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.45), 0 14px 32px -18px rgb(0 0 0 / 0.8);
+}
+
+:root[data-theme='light'] {
+  --color-bg: #eef3f2;
+  --color-surface: #ffffff;
+  --color-surface-2: #e3ebea;
+  --color-surface-sunk: #dde7e6;
+  --color-ink: #142a31;
+  --color-ink-muted: #4a6169;
+  --color-ink-faint: #6b8189;
+  --color-line: #cbd9d8;
+  --color-line-strong: #a9bfbe;
+
+  --color-primary: #0e5a6e;
+  --color-primary-hover: #0b4859;
+  --color-primary-ink: #ffffff;
+  --color-primary-soft: #d7e7ea;
+  --color-primary-soft-ink: #0b4859;
+
+  --color-accent: #b4562b;
+  --color-accent-soft: #f7e6dc;
+  --color-accent-soft-ink: #8c3f1c;
+
+  --color-sos: #d93a2b;
+  --color-sos-hover: #bb2e21;
+  --color-sos-ink: #ffffff;
+  --color-sos-soft: #fbe3e0;
+  --color-sos-soft-ink: #9e2519;
+
+  --color-verify: #1e6b34;
+  --color-verify-soft: #dcece0;
+  --color-verify-soft-ink: #175228;
+
+  --color-neutral-soft: #e3ebea;
+  --color-neutral-soft-ink: #3d545c;
+
+  --color-focus: #0e5a6e;
+
+  --shadow-card: 0 1px 2px rgb(20 42 49 / 0.06), 0 6px 20px -12px rgb(20 42 49 / 0.22);
+  --shadow-lift: 0 2px 4px rgb(20 42 49 / 0.08), 0 14px 32px -18px rgb(20 42 49 / 0.32);
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    color-scheme: light dark;
+  }
+
+  :root[data-theme='light'] {
+    color-scheme: light;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    /* A phone must never scroll sideways; wide things scroll in their own box. */
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 650;
+    letter-spacing: -0.018em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Never rely on the browser default here — several Android browsers draw
+     nothing at all for :focus-visible on custom-styled buttons. */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-soft-ink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* One utility that earns its keep: horizontal overflow containment. */
+@utility scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
