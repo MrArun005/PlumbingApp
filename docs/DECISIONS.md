@@ -65,3 +65,30 @@ Non-obvious choices only. Newest last.
   the integration test creates and cleans up its own booking/jobs.
 - **Consequence:** "sane rows" = seeded tables populated + empty transactional
   tables with valid schema, exercised by `packages/db` int tests.
+
+## D-007 · Refresh replay detection uses a spent-token marker, not a family scan
+
+- **Context:** The first implementation revoked a session family by scanning
+  `refresh:family:*` for the presented hash. But rotation `srem`s the hash from
+  its family, so a replayed token was in NO family — the scan found nothing and
+  reuse detection silently never fired. An integration test caught it.
+- **Options:** (a) keep the hash in the family after rotation and distinguish
+  live/spent some other way; (b) write an explicit `refresh:spent:<hash>` →
+  claims marker on rotation, TTL'd to the refresh lifetime.
+- **Decision:** (b). Replay is then an O(1) lookup that is unambiguous, and the
+  Redis `SCAN` disappears entirely.
+- **Consequence:** revoking a family also clears spent markers — a revoked
+  token being presented is not evidence of a leak, so it must not trigger a
+  second revocation cascade.
+
+## D-008 · Auth guards are per-controller; there is no global guard
+
+- **Context:** A global `CustomerGuard` (`APP_GUARD`) with `@Public()` opt-outs
+  looked like the safe default, but this API serves TWO audiences. The global
+  guard saw a partner's token, decided it was not a customer, and returned 403
+  before `PartnerGuard` ever ran — breaking every partner route.
+- **Decision:** no global guard. Each controller declares `@UseGuards(...)` for
+  its own audience; login routes stay `@Public()`.
+- **Consequence:** a new protected controller must remember its guard. Mitigated
+  by an integration test asserting protected endpoints 401 without a token — add
+  a case there for every new controller.

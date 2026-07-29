@@ -13,7 +13,8 @@ export const baseEnvSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
   PORT: z.coerce.number().int().positive().default(3000),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  // 'silent' is a real pino level — used by tests to keep output clean.
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   // Rule 9: business logic is computed in IST, explicitly — never server-local time.
   BUSINESS_TIMEZONE: z.literal('Asia/Kolkata').default('Asia/Kolkata'),
 });

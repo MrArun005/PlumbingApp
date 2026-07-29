@@ -7,9 +7,27 @@ _Last updated: 2026-07-29_
 
 ## Current work order
 
-**WO-04 · Auth + catalog API** — next up (not started).
+**WO-05 · Booking flow (E2/E3)** — next up (not started).
 
 ## What is DONE
+
+- **WO-04 · Auth + catalog API** ✅
+  - `apps/api` (NestJS 10): phone-OTP auth (hashed codes in Redis, single-use,
+    attempt-limited, per-phone rate limit), JWT access + **rotating single-use
+    refresh tokens with replay detection** (a replayed token revokes the whole
+    session family), customer self-registration, partner gating on ACTIVE +
+    **device binding**.
+  - Catalog: city-scoped reads honouring `CityServiceOverride`, versioned Redis
+    cache, and a `priceDisplay` contract so **INSPECTION_FIRST / QUOTE_ONLY
+    services expose no job price at all** — only the visit charge plus copy
+    about approving the on-site quote. No client ever does price math.
+  - Structured logs with per-request trace ids (AsyncLocalStorage), error
+    taxonomy → HTTP filter, `/health`.
+  - 35 integration tests on real Postgres + Redis. Verified by hand: server
+    boots, `/health` ok, OTP → session → rotate → replay-rejected walked live.
+  - **Two bugs caught by these tests and fixed** (see DECISIONS D-007/D-008):
+    refresh-reuse detection never fired; a global CustomerGuard 403'd every
+    partner route.
 
 - **WO-03 · Pricing engine** ✅
   - `packages/pricing`: pure `computePrice(input, rules, now)` implementing the
