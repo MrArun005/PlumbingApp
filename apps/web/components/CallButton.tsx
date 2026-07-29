@@ -49,20 +49,9 @@ export function CallButton({
   );
 }
 
-/**
- * Sticky bar pinned to the bottom of the viewport on phones. The number is
- * always one thumb away, wherever the customer has scrolled to.
- */
-export function StickyCallBar() {
-  return (
-    <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur sm:hidden">
-      <CallButton fullWidth size="md" />
-      <p className="mt-1.5 text-center text-2xs text-ink-faint">
-        Prefer to talk it through? Ring {business.ownerName} directly.
-      </p>
-    </div>
-  );
-}
+// A sticky call bar used to live here. It was removed once the bottom tab bar
+// gained a Call tab — two permanently-visible call affordances on a 390px screen
+// is just clutter, and the tab bar is the one that survives scrolling anyway.
 
 function PhoneIcon() {
   return (

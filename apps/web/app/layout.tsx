@@ -3,15 +3,19 @@ import type { ReactNode } from 'react';
 import './globals.css';
 import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
+import { BottomTabs } from '../components/BottomTabs';
+import { business } from '../lib/business-config';
 
 export const metadata: Metadata = {
   title: {
-    default: 'PipeFix — plumbers in Bengaluru, price agreed before work starts',
-    template: '%s · PipeFix',
+    default: `${business.name} — plumbing in ${business.serviceArea}`,
+    template: `%s · ${business.name}`,
   },
   description:
-    'Book a police-verified plumber in Bengaluru. Emergency help in 30 minutes or your money back. You approve every price, including quotes raised on site.',
-  applicationName: 'PipeFix',
+    `Leaks, blockages, taps, geysers and new fittings across ${business.serviceArea}. ` +
+    `Call ${business.ownerName} or book online. You see the price — or an itemised quote — ` +
+    'before any work starts.',
+  applicationName: business.name,
 };
 
 export const viewport: Viewport = {
@@ -46,10 +50,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         <SiteHeader />
-        <main id="main" className="mx-auto w-full max-w-5xl px-4 pb-4 pt-5">
+        {/* pb-20 on phones clears the fixed bottom tab bar so the last element
+            of a page is never trapped underneath it. */}
+        <main id="main" className="mx-auto w-full max-w-5xl px-4 pb-20 pt-5 sm:pb-4">
           {children}
         </main>
         <SiteFooter />
+        <BottomTabs />
       </body>
     </html>
   );

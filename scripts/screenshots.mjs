@@ -43,6 +43,20 @@ async function main() {
     await shot(page, 'customer-services-' + theme);
     await page.goto(WEB + '/services/PLB-LEAK-004', { waitUntil: 'networkidle' });
     await shot(page, 'customer-inspect-first-' + theme);
+
+    if (theme === 'light') {
+      // The hamburger drawer, open.
+      await page.goto(WEB + '/', { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: /open menu/i }).click();
+      await page.waitForTimeout(600);
+      await page.screenshot({ path: OUT + '/customer-menu-open.png' });
+      console.log('  ok customer-menu-open');
+
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(400);
+      await page.goto(WEB + '/how-it-works', { waitUntil: 'networkidle' });
+      await shot(page, 'customer-how-it-works');
+    }
     await ctx.close();
   }
 
