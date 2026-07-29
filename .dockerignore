@@ -1,0 +1,54 @@
+# Build context for `docker build -f apps/api/Dockerfile .` (run from repo root).
+# Keep this tight: every extra file is a cache-busting layer input.
+#
+# NOTE ON PATTERNS: a pattern without a slash matches only at the context root.
+# `.env` alone does NOT exclude `packages/db/.env`, so every rule that must apply
+# at any depth is spelled with an explicit `**/` form. Verify a change with:
+#   docker build -f - -t ctx:check . <<'EOF'
+#   FROM node:22-alpine
+#   COPY . /ctx
+#   EOF
+#   docker run --rm ctx:check find /ctx -name '.env*'
+
+# deps + build output — the image builds its own
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.turbo/
+**/.turbo/
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Secrets. Env is injected at run time and never baked into a layer. The
+# examples are excluded too — nothing in the build reads them, and a stray
+# packages/db/.env would otherwise ship a dev DATABASE_URL inside the image
+# AND get picked up by `prisma migrate deploy` if env_file were ever missing.
+.env
+.env.*
+**/.env
+**/.env.*
+
+# vcs / tooling noise
+.git/
+.gitignore
+.husky/
+.vscode/
+.idea/
+
+# tests + reports
+coverage/
+**/coverage/
+**/*.test.ts
+**/*.int.test.ts
+
+# docs and compose files are not needed to build the API
+docs/
+*.md
+**/*.md
+docker-compose.yml
+docker-compose.prod.yml
+Caddyfile
+**/.DS_Store
+*.log
+**/*.log

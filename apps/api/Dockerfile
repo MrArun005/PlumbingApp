@@ -1,5 +1,14 @@
 # syntax=docker/dockerfile:1
 #
+# !! NOT YET PROVEN BY AN ACTUAL BUILD !!
+# Authored but never built successfully: the environment it was written in blocks
+# Alpine's package CDN (`apk add` gets HTTP 403 from the egress proxy), so the
+# very first layer cannot complete here. The reasoning below — especially the
+# Prisma musl-engine handling — is careful but unverified. Before relying on it:
+#     docker build -f apps/api/Dockerfile -t pipefix-api:test .
+#     docker run --rm pipefix-api:test node -e "require('@prisma/client')"
+# and fix whatever it reports. Tracked in docs/STATE.md under stubs/gaps.
+#
 # PipeFix API image. Build from the REPO ROOT — the pnpm workspace root is the
 # build context, not apps/api:
 #
