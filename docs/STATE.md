@@ -11,6 +11,40 @@ _Last updated: 2026-07-29_
 
 ## What is DONE
 
+- **WO-10 · Emergency tier (E0/E1)** ✅ — the product's differentiator
+  - SOS intake returns the **safety card in the same response** as the booking,
+    so the customer's reading time never costs them ETA (spec is explicit that
+    dispatch fires in parallel). Idempotent: a panicked double-tap on the red
+    button creates one emergency, not two ₹499 holds.
+  - **Safety scripts are hard-gated**: a script without `reviewedAt` is NEVER
+    served in production — the customer gets conservative fallback advice
+    instead. Drafts are served outside production, clearly marked.
+    `unreviewedIssueTypes()` is the launch blocker list.
+  - **GAS_SMELL refuses to dispatch at all** — the customer is told to leave and
+    call 1906. Sending our own technician into a suspected gas leak first would
+    be dangerous.
+  - Surge: per-zone 15-minute buckets from demand/supply, smoothed, capped 2.0×,
+    integer ×100 throughout, and **frozen onto the booking** at creation.
+  - AMC Plus: zero emergency fee and surge capped at 1.25× — both tested.
+  - **SLA watchdog** = the automatic money-back guarantee: no assignment within
+    10 min (E0) or no arrival by the SLA target → refund + ₹200 credit +
+    `SLABreachEvent`, in one transaction, exactly once however often the sweep
+    runs. Dispatch breaches page on-call; arrival breaches do not.
+  - The app **refuses to boot in production** without a real payment gateway.
+  - 24 integration tests. **Known gaps:** standby-roster bidding and the
+    coverage heatmap are not built; pre-auth hold is modelled but the real
+    Razorpay call is stubbed.
+
+- **WO-09 · Dispatch engine (pure part + simulator)** ✅
+  - `packages/dispatch`: `rankCandidates()` with the full spec filter and
+    weighted score, typed exclusion reasons, ring ladders per tier, fully
+    deterministic (clock/RNG spies prove it).
+  - Simulator replays synthetic demand against a synthetic grid. Baseline
+    reaches 66% on-time with 60 partners; `minimumSupplyFor()` reports that
+    **120 partners → 89% on-time, p90 ETA 25.8 min**. The ≥85% criterion is met
+    by the engine — the baseline pool is simply too thin, which is the real
+    finding (D-013). **Still open:** BullMQ ring runtime + Redis accept lock.
+
 - **WO-08 · On-site quotes + materials** ✅ — the inspect-first price loop
   - Partner job flow: start → arrive → diagnose → quote → begin-work →
     finish-work → complete, every hop through `jobMachine`. Arrival needs the

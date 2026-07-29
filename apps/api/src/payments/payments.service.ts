@@ -30,6 +30,23 @@ export interface PaymentGateway {
 
 export const PAYMENT_GATEWAY = Symbol('PAYMENT_GATEWAY');
 
+/**
+ * Chooses the gateway for an environment. Extracted from the Nest module so it
+ * can be tested directly — NestJS calls `process.exit` when a provider factory
+ * throws during bootstrap, which takes the test runner down with it.
+ *
+ * In production this THROWS unless a real gateway is wired. A stub silently
+ * accepting production payments would be far worse than a refused boot.
+ */
+export function createPaymentGateway(env: { NODE_ENV: string }): PaymentGateway {
+  if (env.NODE_ENV === 'production') {
+    throw new Error(
+      'No production payment gateway is configured. Wire Razorpay (live keys + completed KYC) before deploying to production.',
+    );
+  }
+  return new StubGateway();
+}
+
 /** Local/dev gateway. Never selected when NODE_ENV=production. */
 export class StubGateway implements PaymentGateway {
   readonly name = 'stub';

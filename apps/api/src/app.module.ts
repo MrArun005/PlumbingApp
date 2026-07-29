@@ -18,10 +18,19 @@ import { IdempotencyService } from './common/idempotency.service';
 import { OpsController } from './ops/ops.controller';
 import { OpsService } from './ops/ops.service';
 import { WebhooksController } from './payments/webhooks.controller';
-import { PAYMENT_GATEWAY, PaymentsService, StubGateway } from './payments/payments.service';
+import {
+  PAYMENT_GATEWAY,
+  PaymentsService,
+  createPaymentGateway,
+} from './payments/payments.service';
 import { CustomerQuotesController, PartnerJobsController } from './jobs/jobs.controller';
 import { JobsService } from './jobs/jobs.service';
 import { QuotesService } from './jobs/quotes.service';
+import { EmergencyController } from './emergency/emergency.controller';
+import { EmergencyService } from './emergency/emergency.service';
+import { SafetyScriptsService } from './emergency/safety-scripts.service';
+import { SlaWatchdogService } from './emergency/sla-watchdog.service';
+import { SurgeService } from './emergency/surge.service';
 
 /**
  * Infrastructure is provided from validated env — nothing reads process.env
@@ -47,6 +56,7 @@ export class AppModule {
         BookingsController,
         CustomerQuotesController,
         PartnerJobsController,
+        EmergencyController,
         WebhooksController,
         OpsController,
         HealthController,
@@ -64,19 +74,14 @@ export class AppModule {
         OpsService,
         JobsService,
         QuotesService,
-        // The real Razorpay client swaps in here once live keys + KYC exist.
-        // Guarded so a stub can never be selected in production by accident.
-        {
-          provide: PAYMENT_GATEWAY,
-          useFactory: () => {
-            if (env.NODE_ENV === 'production') {
-              throw new Error(
-                'No production payment gateway is configured. Wire Razorpay before deploying to production.',
-              );
-            }
-            return new StubGateway();
-          },
-        },
+        EmergencyService,
+        SafetyScriptsService,
+        SlaWatchdogService,
+        SurgeService,
+        // The real Razorpay client swaps in inside createPaymentGateway() once
+        // live keys + KYC exist. It throws in production rather than letting a
+        // stub quietly accept real payments.
+        { provide: PAYMENT_GATEWAY, useFactory: () => createPaymentGateway(env) },
         // Guards are applied PER CONTROLLER, never globally: this API serves two
         // different audiences, and a global guard cannot know which audience a
         // route belongs to (a customer-only global guard would 403 every partner
