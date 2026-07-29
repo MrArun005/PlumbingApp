@@ -40,3 +40,28 @@ Non-obvious choices only. Newest last.
   invoices — with FLOOR/CEIL available explicitly. `TODO(ca-review)`: confirm
   per-line GST rounding mode with the CA before first real invoice.
 - **Consequence:** pricing tests encode HALF_UP expectations.
+
+## D-005 · "One active job per partner" index covers ALL on-site states
+
+- **Context:** BUILD-PROMPT's partial unique index lists
+  `('ASSIGNED','EN_ROUTE','ARRIVED','IN_PROGRESS')`. But DIAGNOSING,
+  QUOTE_PENDING and QUOTE_REVISED are also states where the partner is
+  physically on a job — excluding them would let dispatch hand a partner a
+  second job mid-diagnosis.
+- **Decision:** widen the predicate to all seven active states (the prompt
+  itself invites fixing internal inconsistencies rather than building around
+  them).
+- **Consequence:** the DB now enforces exactly what the dispatch filter
+  `activeJobCount === 0` assumes. Flagged to the product owner in the WO-02
+  report.
+
+## D-006 · Seed = reference data only; transactional tables stay empty
+
+- **Context:** WO-02's done-when says "SELECT on every table returns sane
+  rows", but fabricating bookings/payments/invoices in the seed would pollute
+  every future integration test and demo.
+- **Decision:** seed catalog/zones/partners/plans/rules/scripts/test-users
+  only. Transactional rows are created by the flows that own them (WO-05+);
+  the integration test creates and cleans up its own booking/jobs.
+- **Consequence:** "sane rows" = seeded tables populated + empty transactional
+  tables with valid schema, exercised by `packages/db` int tests.

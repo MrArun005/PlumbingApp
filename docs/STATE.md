@@ -7,9 +7,26 @@ _Last updated: 2026-07-29_
 
 ## Current work order
 
-**WO-02 · Data layer** — in progress.
+**WO-03 · Pricing engine** — in progress.
 
 ## What is DONE
+
+- **WO-02 · Data layer** ✅
+  - `packages/db`: full Prisma 5 schema — 40+ models, all money as BigInt
+    paise, multipliers as `…X100` ints, `JobTimelineEvent` append-only
+    (no updatedAt), PostGIS `geography` columns on Address / ZoneGeofence /
+    PartnerLocationPing.
+  - Migration `20260729134216_init`: PostGIS extension, GiST indexes on all
+    geography columns, partial unique index `Job_one_active_per_partner`
+    (widened to all on-site states — DECISIONS D-005).
+  - Idempotent seed: 10 categories, **74 SKUs** (PLAN §2.2 anchors), 3
+    Bengaluru zone polygons, 10 ACTIVE partners (skills/tools/Mon–Sat
+    availability), 2 AMC plans, 5 versioned price rules, 5 safety-script
+    drafts (reviewedAt=NULL ⇒ never servable), 2 test users with geocoded
+    addresses, 1 coupon.
+  - 9 integration tests against real Postgres (skip cleanly when DB is down),
+    incl. ST_Covers zone containment and the DB-level active-job guard.
+  - Verified: seed ran 3× with stable counts; `pnpm build && pnpm test` green.
 
 - **WO-01 · Foundation** ✅
   - pnpm + Turborepo monorepo, TypeScript strict + `noUncheckedIndexedAccess`,

@@ -6,8 +6,8 @@ verified by actually running the command, and STATE.md is updated.
 | WO  | Title                                     | Status         | Done-when check                                     |
 | --- | ----------------------------------------- | -------------- | --------------------------------------------------- |
 | 01  | Foundation (monorepo, shared, compose)    | ✅ DONE        | `pnpm build && pnpm test` green, compose healthy    |
-| 02  | Data layer (Prisma schema, PostGIS, seed) | 🔨 IN PROGRESS | `pnpm db:seed` idempotent, sane rows in every table |
-| 03  | Pricing engine (pure, ≥40 tests)          | ⬜ QUEUED      | 100% branch coverage, no I/O imports                |
+| 02  | Data layer (Prisma schema, PostGIS, seed) | ✅ DONE        | `pnpm db:seed` idempotent, sane rows in every table |
+| 03  | Pricing engine (pure, ≥40 tests)          | 🔨 IN PROGRESS | 100% branch coverage, no I/O imports                |
 | 04  | Auth + catalog API                        | ⬜ QUEUED      | —                                                   |
 | 05  | Booking flow (E2/E3)                      | ⬜ QUEUED      | integration test books → pays → ASSIGNED            |
 | 06  | Partner app core                          | ⬜ QUEUED      | —                                                   |

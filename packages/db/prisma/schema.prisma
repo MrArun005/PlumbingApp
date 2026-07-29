@@ -1,0 +1,1068 @@
+// PipeFix data model — see docs/BUILD-PROMPT.md "DATA MODEL" for the source spec.
+//
+// Conventions:
+// - ids are cuid strings; every table has createdAt/updatedAt except
+//   append-only tables (JobTimelineEvent — rule 3: never update, never delete).
+// - ALL money columns are BigInt paise and end in `Paise`.
+// - Multipliers are integers scaled ×100 (150 = 1.50×) — no floats near money.
+// - geography columns are PostGIS `Unsupported` types; they are written via
+//   raw SQL and carry GiST indexes added by hand in the migration.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── enums ─────────────────────────────
+
+enum PartnerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  OFFBOARDED
+}
+
+enum OnlineStatus {
+  OFFLINE
+  ONLINE
+  ON_JOB
+}
+
+enum SkillTier {
+  L1
+  L2
+  L3
+}
+
+enum PartnerDocumentType {
+  AADHAAR
+  PAN
+  POLICE_VERIFICATION
+  BANK_PROOF
+  CERTIFICATE
+}
+
+enum PartnerToolType {
+  DRAIN_MACHINE
+  JETTING_UNIT
+  CLOSET_AUGER
+  LEAK_DETECTOR
+  CORE_DRILL
+  PPE_KIT
+}
+
+enum PricingModel {
+  FIXED
+  FROM
+  PER_UNIT
+  HOURLY
+  INSPECTION_FIRST
+  QUOTE_ONLY
+  SUBSCRIPTION
+}
+
+enum MaterialsPolicy {
+  INCLUDED
+  CONSUMABLES_ONLY
+  EXCLUDED
+}
+
+enum UrgencyTier {
+  E0
+  E1
+  E2
+  E3
+}
+
+enum BookingStatus {
+  DRAFT
+  PENDING_PAYMENT
+  EXPIRED
+  CONFIRMED
+  DISPATCHING
+  FAILED_TO_ASSIGN
+  ASSIGNED
+  EN_ROUTE
+  ARRIVED
+  DIAGNOSING
+  QUOTE_PENDING
+  QUOTE_REVISED
+  VISIT_CHARGE_ONLY
+  IN_PROGRESS
+  WORK_DONE
+  PAYMENT_PENDING
+  COMPLETED
+  CANCELLED_BY_USER
+  CANCELLED_BY_PARTNER
+  NO_SHOW_CUSTOMER
+  NO_SHOW_PARTNER
+  DISPUTED
+}
+
+enum JobStatus {
+  ASSIGNED
+  EN_ROUTE
+  ARRIVED
+  DIAGNOSING
+  QUOTE_PENDING
+  QUOTE_REVISED
+  VISIT_CHARGE_ONLY
+  IN_PROGRESS
+  WORK_DONE
+  COMPLETED
+  CANCELLED
+  NO_SHOW_CUSTOMER
+  NO_SHOW_PARTNER
+  DISPUTED
+}
+
+enum DispatchOutcome {
+  ACCEPTED
+  DECLINED
+  TIMEOUT
+  CANCELLED
+}
+
+enum PriceRuleType {
+  SURGE
+  NIGHT
+  HOLIDAY
+  AMC_DISCOUNT
+  EMERGENCY_FEE
+}
+
+enum ActorType {
+  CUSTOMER
+  PARTNER
+  SYSTEM
+  ADMIN
+}
+
+enum JobPhotoPhase {
+  BEFORE
+  DURING
+  AFTER
+  MATERIAL_BILL
+}
+
+enum QuoteStatus {
+  PENDING
+  REVISED
+  APPROVED
+  DECLINED
+}
+
+enum QuoteApprovalMethod {
+  IN_APP
+  OTP
+}
+
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  UPI
+  CARD
+  NETBANKING
+  WALLET
+  CASH
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+enum LedgerOwnerType {
+  USER
+  PARTNER
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+enum StandbyShiftStatus {
+  OPEN
+  CLAIMED
+  COMPLETED
+  CANCELLED
+}
+
+enum CouponKind {
+  FLAT
+  PERCENT
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum ClaimStatus {
+  OPEN
+  REVISIT_SCHEDULED
+  RESOLVED
+  REJECTED
+  ESCALATED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum NotificationChannel {
+  PUSH
+  SMS
+  WHATSAPP
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ─────────────────────── identity & geo ───────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  phone        String   @unique // E.164, +91XXXXXXXXXX
+  name         String
+  email        String?
+  isBlocked    Boolean  @default(false)
+  referralCode String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  addresses         Address[]
+  bookings          Booking[]
+  walletEntries     WalletLedger[]    @relation("UserWallet")
+  amcSubscriptions  AMCSubscription[]
+  referralsGiven    Referral[]        @relation("ReferralsGiven")
+  referralsReceived Referral[]        @relation("ReferralsReceived")
+}
+
+model Address {
+  id               String                                @id @default(cuid())
+  userId           String
+  label            String // "Home", "Office"…
+  line1            String
+  line2            String?
+  landmark         String?
+  pincode          String
+  city             String
+  location         Unsupported("geography(Point,4326)")?
+  floor            Int?
+  liftAvailable    Boolean                               @default(false)
+  gateInstructions String?
+  isDefault        Boolean                               @default(false)
+  createdAt        DateTime                              @default(now())
+  updatedAt        DateTime                              @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id])
+  bookings Booking[]
+
+  @@index([userId])
+}
+
+model ZoneGeofence {
+  id                 String                                  @id @default(cuid())
+  city               String
+  name               String
+  polygon            Unsupported("geography(Polygon,4326)")?
+  isServiceable      Boolean                                 @default(true)
+  slaOverrideMinutes Int?
+  createdAt          DateTime                                @default(now())
+  updatedAt          DateTime                                @updatedAt
+
+  partners      Partner[]
+  standbyShifts StandbyShift[]
+
+  @@unique([city, name])
+}
+
+// ───────────────────────────── supply ─────────────────────────────
+
+model Partner {
+  id                       String        @id @default(cuid())
+  phone                    String        @unique
+  name                     String
+  status                   PartnerStatus @default(PENDING)
+  onlineStatus             OnlineStatus  @default(OFFLINE)
+  skillTier                SkillTier     @default(L1)
+  emergencyOptIn           Boolean       @default(false)
+  homeZoneId               String?
+  // analytics fields (not money) — plain floats are fine here
+  ratingAvg90d             Float?
+  acceptanceRate7d         Float         @default(1)
+  firstVisitResolutionRate Float         @default(1)
+  walletBalancePaise       BigInt        @default(0)
+  deviceId                 String?
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  homeZone      ZoneGeofence?         @relation(fields: [homeZoneId], references: [id])
+  documents     PartnerDocument[]
+  skills        PartnerSkill[]
+  tools         PartnerTool[]
+  availability  PartnerAvailability[]
+  standbyShifts StandbyShift[]
+  locationPings PartnerLocationPing[]
+  offers        DispatchOffer[]
+  jobs          Job[]
+  earnings      PartnerEarning[]
+  payouts       PartnerPayout[]
+  walletEntries WalletLedger[]        @relation("PartnerWallet")
+
+  @@index([status, onlineStatus])
+}
+
+model PartnerDocument {
+  id         String              @id @default(cuid())
+  partnerId  String
+  type       PartnerDocumentType
+  fileKey    String
+  verifiedAt DateTime?
+  verifiedBy String?
+  expiresAt  DateTime?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  @@index([partnerId, type])
+}
+
+model PartnerSkill {
+  id          String    @id @default(cuid())
+  partnerId   String
+  categoryId  String
+  tier        SkillTier
+  certifiedAt DateTime?
+  certifiedBy String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  partner  Partner         @relation(fields: [partnerId], references: [id])
+  category ServiceCategory @relation(fields: [categoryId], references: [id])
+
+  @@unique([partnerId, categoryId])
+}
+
+model PartnerTool {
+  id        String          @id @default(cuid())
+  partnerId String
+  tool      PartnerToolType
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  @@unique([partnerId, tool])
+}
+
+model PartnerAvailability {
+  id        String   @id @default(cuid())
+  partnerId String
+  dayOfWeek Int // 0 = Sunday … 6 = Saturday (IST)
+  startMin  Int // minutes from IST midnight
+  endMin    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  @@index([partnerId, dayOfWeek])
+}
+
+model StandbyShift {
+  id            String             @id @default(cuid())
+  partnerId     String?
+  zoneId        String
+  startsAt      DateTime
+  endsAt        DateTime
+  retainerPaise BigInt
+  status        StandbyShiftStatus @default(OPEN)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  partner Partner?     @relation(fields: [partnerId], references: [id])
+  zone    ZoneGeofence @relation(fields: [zoneId], references: [id])
+
+  @@index([zoneId, startsAt])
+}
+
+// Rolled-up ping history; the hot path (latest position) lives in Redis.
+model PartnerLocationPing {
+  id         String                                @id @default(cuid())
+  partnerId  String
+  location   Unsupported("geography(Point,4326)")?
+  accuracyM  Float?
+  recordedAt DateTime
+  createdAt  DateTime                              @default(now())
+
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  @@index([partnerId, recordedAt(sort: Desc)])
+}
+
+// ─────────────────────── catalog & pricing ───────────────────────
+
+model ServiceCategory {
+  id        String   @id @default(cuid())
+  code      String   @unique // LEAK, DRN, BTH…
+  name      String
+  sortOrder Int      @default(0)
+  iconKey   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services      Service[]
+  partnerSkills PartnerSkill[]
+}
+
+model Service {
+  id                String            @id @default(cuid())
+  sku               String            @unique // PLB-<CAT>-<NNN>
+  categoryId        String
+  name              String
+  shortDesc         String
+  longDesc          String?
+  pricingModel      PricingModel
+  basePricePaise    BigInt? // null for QUOTE_ONLY
+  unitLabel         String? // "per tap", "per point"…
+  visitChargePaise  BigInt            @default(0) // charged if quote declined
+  estDurationMin    Int
+  skillTier         SkillTier
+  materialsPolicy   MaterialsPolicy   @default(EXCLUDED)
+  warrantyDays      Int               @default(30)
+  urgencyEligible   UrgencyTier[]
+  requiredTools     PartnerToolType[]
+  preVisitQuestions Json              @default("[]")
+  sacCode           String? // TODO(ca-review): fill real SAC codes before first invoice
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  category      ServiceCategory       @relation(fields: [categoryId], references: [id])
+  addOns        ServiceAddOn[]        @relation("ServiceAddOns")
+  addOnOf       ServiceAddOn[]        @relation("AddOnOf")
+  cityOverrides CityServiceOverride[]
+  bookingItems  BookingItem[]
+
+  @@index([categoryId, isActive])
+}
+
+model ServiceAddOn {
+  id             String   @id @default(cuid())
+  serviceId      String
+  addOnServiceId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  service      Service @relation("ServiceAddOns", fields: [serviceId], references: [id])
+  addOnService Service @relation("AddOnOf", fields: [addOnServiceId], references: [id])
+
+  @@unique([serviceId, addOnServiceId])
+}
+
+model CityServiceOverride {
+  id             String   @id @default(cuid())
+  city           String
+  serviceId      String
+  basePricePaise BigInt?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@unique([city, serviceId])
+}
+
+// Effective-dated and versioned. Invoices must reproduce exactly from the
+// version active at booking time — bookings store priceRuleVersionIds.
+model PriceRule {
+  id            String        @id @default(cuid())
+  type          PriceRuleType
+  city          String? // null = all cities
+  params        Json
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  version       Int
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([type, city, version])
+  @@index([type, effectiveFrom])
+}
+
+model SurgeWindow {
+  id             String   @id @default(cuid())
+  h3Index        String
+  bucketStart    DateTime // 15-min bucket
+  multiplierX100 Int // 150 = 1.50×, hard cap 200
+  openRequests   Int
+  onlinePartners Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([h3Index, bucketStart])
+}
+
+// ─────────────────────── demand & fulfilment ───────────────────────
+
+model Booking {
+  id                  String        @id @default(cuid())
+  userId              String
+  addressId           String
+  urgencyTier         UrgencyTier
+  status              BookingStatus @default(DRAFT)
+  scheduledSlotStart  DateTime?
+  scheduledSlotEnd    DateTime?
+  estimateTotalPaise  BigInt
+  finalTotalPaise     BigInt?
+  surgeMultiplierX100 Int           @default(100) // frozen at booking
+  emergencyFeePaise   BigInt        @default(0)
+  couponId            String?
+  amcSubscriptionId   String?
+  priceRuleVersionIds Json          @default("[]") // PriceRule ids used for the estimate
+  idempotencyKey      String?       @unique
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id])
+  address          Address           @relation(fields: [addressId], references: [id])
+  coupon           Coupon?           @relation(fields: [couponId], references: [id])
+  amcSubscription  AMCSubscription?  @relation(fields: [amcSubscriptionId], references: [id])
+  items            BookingItem[]
+  emergencyRequest EmergencyRequest?
+  jobs             Job[]
+  invoice          Invoice?
+  payments         Payment[]
+  amcVisits        AMCVisit[]
+
+  @@index([status, urgencyTier, createdAt])
+  @@index([userId, createdAt])
+}
+
+model BookingItem {
+  id              String   @id @default(cuid())
+  bookingId       String
+  serviceId       String
+  quantity        Int      @default(1)
+  unitPricePaise  BigInt
+  preVisitAnswers Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@index([bookingId])
+}
+
+model EmergencyRequest {
+  id                   String    @id @default(cuid())
+  bookingId            String    @unique
+  issueType            String // BURST_PIPE | FLOODING | SEWAGE_BACKFLOW | NO_WATER | GEYSER_LEAK | OTHER
+  safetyScriptVersion  Int
+  safetyAcknowledgedAt DateTime?
+  mediaKeys            String[]
+  slaTargetAt          DateTime
+  firstOfferAt         DateTime?
+  assignedAt           DateTime?
+  arrivedAt            DateTime?
+  breached             Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+}
+
+model DispatchOffer {
+  id            String           @id @default(cuid())
+  jobId         String
+  partnerId     String
+  ring          Int
+  offeredAt     DateTime
+  respondedAt   DateTime?
+  outcome       DispatchOutcome?
+  declineReason String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  job     Job     @relation(fields: [jobId], references: [id])
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  @@index([jobId])
+  @@index([partnerId, offeredAt])
+}
+
+// One Booking can spawn multiple Jobs (reattempt, warranty revisit).
+model Job {
+  id                String    @id @default(cuid())
+  bookingId         String
+  partnerId         String?
+  status            JobStatus @default(ASSIGNED)
+  startOtp          String
+  endOtp            String
+  startedAt         DateTime?
+  arrivedAt         DateTime?
+  completedAt       DateTime?
+  isWarrantyRevisit Boolean   @default(false)
+  parentJobId       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  booking        Booking            @relation(fields: [bookingId], references: [id])
+  partner        Partner?           @relation(fields: [partnerId], references: [id])
+  parentJob      Job?               @relation("JobRevisits", fields: [parentJobId], references: [id])
+  revisits       Job[]              @relation("JobRevisits")
+  timeline       JobTimelineEvent[]
+  photos         JobPhoto[]
+  quotes         Quote[]
+  materialLines  MaterialLine[]
+  offers         DispatchOffer[]
+  rating         Rating?
+  review         Review?
+  earning        PartnerEarning?
+  warrantyClaims WarrantyClaim[]    @relation("ClaimOriginJob")
+  revisitClaims  WarrantyClaim[]    @relation("ClaimRevisitJob")
+
+  // NOTE: a partial unique index "one active job per partner" is added in
+  // raw SQL in the migration (Prisma cannot express partial indexes).
+  @@index([bookingId])
+  @@index([partnerId, status])
+}
+
+// APPEND-ONLY (rule 3). No updatedAt on purpose; rows are never touched again.
+// SLA measurement, dispute resolution and analytics all read from here.
+model JobTimelineEvent {
+  id         String    @id @default(cuid())
+  jobId      String
+  eventType  String // e.g. dispatch.offer.sent, job.arrived, quote.approved
+  actorType  ActorType
+  actorId    String?
+  payload    Json      @default("{}")
+  occurredAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@index([jobId, occurredAt])
+}
+
+model JobPhoto {
+  id             String        @id @default(cuid())
+  jobId          String
+  phase          JobPhotoPhase
+  fileKey        String
+  takenAt        DateTime?
+  exifStrippedAt DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@index([jobId, phase])
+}
+
+model Quote {
+  id         String      @id @default(cuid())
+  jobId      String
+  status     QuoteStatus @default(PENDING)
+  totalPaise BigInt
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  job      Job            @relation(fields: [jobId], references: [id])
+  lines    QuoteLine[]
+  approval QuoteApproval?
+
+  @@index([jobId])
+}
+
+model QuoteLine {
+  id             String   @id @default(cuid())
+  quoteId        String
+  description    String
+  quantity       Int      @default(1)
+  unitPricePaise BigInt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  quote Quote @relation(fields: [quoteId], references: [id])
+}
+
+model QuoteApproval {
+  id         String              @id @default(cuid())
+  quoteId    String              @unique
+  method     QuoteApprovalMethod
+  approvedAt DateTime
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  quote Quote @relation(fields: [quoteId], references: [id])
+}
+
+model MaterialLine {
+  id             String   @id @default(cuid())
+  jobId          String
+  description    String
+  quantity       Int      @default(1)
+  unitPricePaise BigInt
+  billPhotoKey   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@index([jobId])
+}
+
+// ───────────────────────────── money ─────────────────────────────
+
+model Invoice {
+  id         String   @id @default(cuid())
+  bookingId  String   @unique
+  number     String   @unique // e.g. PF/2026-27/000042 — gapless per FY
+  fy         String // "2026-27"
+  seq        Int
+  gstBreakup Json
+  totalPaise BigInt
+  pdfKey     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@unique([fy, seq])
+}
+
+model Payment {
+  id               String         @id @default(cuid())
+  bookingId        String
+  gateway          String // "razorpay" | "cash"
+  gatewayOrderId   String?        @unique
+  gatewayPaymentId String?
+  method           PaymentMethod?
+  status           PaymentStatus  @default(CREATED)
+  amountPaise      BigInt
+  capturedAt       DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  booking Booking  @relation(fields: [bookingId], references: [id])
+  refunds Refund[]
+
+  @@index([bookingId])
+}
+
+model Refund {
+  id              String       @id @default(cuid())
+  paymentId       String
+  amountPaise     BigInt
+  reasonCode      String
+  status          RefundStatus @default(PENDING)
+  gatewayRefundId String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+}
+
+// One row per wallet movement. balanceAfterPaise makes it auditable.
+model WalletLedger {
+  id                String          @id @default(cuid())
+  ownerType         LedgerOwnerType
+  userId            String?
+  partnerId         String?
+  direction         LedgerDirection
+  reasonCode        String // e.g. SLA_BREACH_CREDIT, CANCELLATION_FEE
+  amountPaise       BigInt
+  balanceAfterPaise BigInt
+  refType           String? // Booking | Job | Payout …
+  refId             String?
+  createdAt         DateTime        @default(now())
+
+  user    User?    @relation("UserWallet", fields: [userId], references: [id])
+  partner Partner? @relation("PartnerWallet", fields: [partnerId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([partnerId, createdAt])
+}
+
+model PartnerEarning {
+  id              String   @id @default(cuid())
+  partnerId       String
+  jobId           String   @unique
+  grossPaise      BigInt
+  commissionPaise BigInt // platform take
+  netPaise        BigInt
+  payoutId        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  partner Partner        @relation(fields: [partnerId], references: [id])
+  job     Job            @relation(fields: [jobId], references: [id])
+  payout  PartnerPayout? @relation(fields: [payoutId], references: [id])
+
+  @@index([partnerId, createdAt])
+}
+
+model PartnerPayout {
+  id          String       @id @default(cuid())
+  partnerId   String
+  batchId     String?
+  amountPaise BigInt
+  status      PayoutStatus @default(PENDING)
+  utr         String? // bank reference once paid
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  partner  Partner          @relation(fields: [partnerId], references: [id])
+  batch    PayoutBatch?     @relation(fields: [batchId], references: [id])
+  earnings PartnerEarning[]
+
+  @@index([partnerId, status])
+}
+
+model PayoutBatch {
+  id           String       @id @default(cuid())
+  scheduledFor DateTime
+  status       PayoutStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  payouts PartnerPayout[]
+}
+
+model Coupon {
+  id               String     @id @default(cuid())
+  code             String     @unique
+  kind             CouponKind
+  flatPaise        BigInt? // when kind = FLAT
+  percent          Int? // when kind = PERCENT (whole %)
+  maxDiscountPaise BigInt?
+  validFrom        DateTime
+  validTo          DateTime?
+  isActive         Boolean    @default(true)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  bookings Booking[]
+}
+
+model Referral {
+  id          String   @id @default(cuid())
+  referrerId  String
+  refereeId   String
+  rewardPaise BigInt
+  isSettled   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  referrer User @relation("ReferralsGiven", fields: [referrerId], references: [id])
+  referee  User @relation("ReferralsReceived", fields: [refereeId], references: [id])
+
+  @@unique([referrerId, refereeId])
+}
+
+model AMCPlan {
+  id                String   @id @default(cuid())
+  code              String   @unique // AMC_BASIC | AMC_PLUS
+  name              String
+  pricePaise        BigInt
+  visitsPerYear     Int
+  repairDiscountPct Int // labour only, never materials
+  zeroEmergencyFee  Boolean  @default(false)
+  prioritySosQueue  Boolean  @default(false)
+  surgeCapX100      Int? // AMC Plus: surge capped at 125
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  subscriptions AMCSubscription[]
+}
+
+model AMCSubscription {
+  id        String             @id @default(cuid())
+  planId    String
+  userId    String
+  startsAt  DateTime
+  endsAt    DateTime
+  status    SubscriptionStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  plan     AMCPlan    @relation(fields: [planId], references: [id])
+  user     User       @relation(fields: [userId], references: [id])
+  visits   AMCVisit[]
+  bookings Booking[]
+
+  @@index([userId, status])
+}
+
+model AMCVisit {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  bookingId      String?
+  scheduledFor   DateTime
+  isCompleted    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  subscription AMCSubscription @relation(fields: [subscriptionId], references: [id])
+  booking      Booking?        @relation(fields: [bookingId], references: [id])
+}
+
+// ───────────────────────────── ops ─────────────────────────────
+
+model Rating {
+  id        String   @id @default(cuid())
+  jobId     String   @unique
+  stars     Int // 1–5
+  byUserId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  job Job @relation(fields: [jobId], references: [id])
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  jobId       String   @unique
+  text        String
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  job Job @relation(fields: [jobId], references: [id])
+}
+
+model WarrantyClaim {
+  id           String      @id @default(cuid())
+  jobId        String // the original job under warranty
+  revisitJobId String?
+  reason       String
+  status       ClaimStatus @default(OPEN)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  job        Job  @relation("ClaimOriginJob", fields: [jobId], references: [id])
+  revisitJob Job? @relation("ClaimRevisitJob", fields: [revisitJobId], references: [id])
+
+  @@index([status])
+}
+
+model SupportTicket {
+  id        String       @id @default(cuid())
+  userId    String?
+  bookingId String?
+  subject   String
+  body      String?
+  priority  Int          @default(2) // 0 = urgent … 3 = low
+  status    TicketStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([status, priority])
+}
+
+// Every missed promise, logged. The single best supply-planning signal.
+model SLABreachEvent {
+  id         String   @id @default(cuid())
+  breachType String // DISPATCH_SLA_BREACH | ARRIVAL_SLA_BREACH …
+  bookingId  String?
+  jobId      String?
+  details    Json     @default("{}")
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([breachType, occurredAt])
+}
+
+model Notification {
+  id            String              @id @default(cuid())
+  recipientType ActorType
+  recipientId   String
+  channel       NotificationChannel
+  templateKey   String
+  payload       Json                @default("{}")
+  status        NotificationStatus  @default(PENDING)
+  sentAt        DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([recipientType, recipientId, createdAt])
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  actorType  ActorType
+  actorId    String?
+  action     String // e.g. price_rule.update, booking.manual_assign
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  reason     String? // mandatory for surge overrides — enforced in service layer
+  createdAt  DateTime  @default(now())
+
+  @@index([entityType, entityId, createdAt])
+}
+
+// Rule 6: every mutating public endpoint stores its serialised response here
+// keyed by (endpoint, key); replays return the stored response verbatim.
+model IdempotencyRecord {
+  id           String   @id @default(cuid())
+  endpoint     String
+  key          String
+  requestHash  String
+  responseBody Json
+  statusCode   Int
+  createdAt    DateTime @default(now())
+
+  @@unique([endpoint, key])
+}
+
+// Versioned safety content. HARD FLAG: rows without reviewedAt must never be
+// served in production (enforced in the serving code, tested).
+model SafetyScript {
+  id               String    @id @default(cuid())
+  issueType        String // BURST_PIPE | GEYSER_LEAK | SEWAGE_BACKFLOW …
+  version          Int
+  bodyMarkdown     String
+  illustrationKeys String[]
+  reviewedBy       String? // licensed plumber sign-off — PENDING_EXPERT_REVIEW until set
+  reviewedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([issueType, version])
+}

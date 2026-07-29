@@ -1,0 +1,28 @@
+{
+  "name": "@pipefix/db",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prisma schema, migrations and seed for PipeFix (PostgreSQL 16 + PostGIS)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src prisma",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.14",
+    "prisma": "5.22.0",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
