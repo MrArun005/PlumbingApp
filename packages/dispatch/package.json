@@ -1,0 +1,26 @@
+{
+  "name": "@pipefix/dispatch",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PURE partner ranking + ring escalation. No DB, no network, no clock, no RNG.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "sim": "tsx src/sim/run.ts"
+  },
+  "dependencies": {
+    "@pipefix/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.14",
+    "@vitest/coverage-v8": "^3.2.4",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
