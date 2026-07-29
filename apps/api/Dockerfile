@@ -20,6 +20,13 @@ FROM node:22-alpine AS base
 RUN apk add --no-cache openssl
 ENV PNPM_HOME=/pnpm
 ENV PATH=/pnpm:$PATH
+# `corepack enable` only drops in a shim — the pnpm tarball named by
+# package.json#packageManager is fetched on FIRST USE. Park that cache somewhere
+# world-readable instead of root's $HOME so the unprivileged `node` user hits
+# the copy baked in at build time. Without this the migrate container tries to
+# reach registry.npmjs.org at start-up and dies: it runs as `node` on a network
+# with no egress by design.
+ENV COREPACK_HOME=/opt/corepack
 RUN corepack enable
 WORKDIR /repo
 
@@ -75,6 +82,11 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 # this as a one-shot service that must exit 0 before the API starts.
 FROM build AS migrate
 ENV NODE_ENV=production
+# Refuse to reach the network for a package manager at run time — the cache
+# populated during the build must be enough, and a miss should fail loudly here
+# rather than hang against a DNS timeout in the middle of a deploy.
+ENV COREPACK_ENABLE_NETWORK=0
+RUN chmod -R a+rX /opt/corepack
 USER node
 CMD ["pnpm", "--filter", "@pipefix/db", "db:migrate"]
 

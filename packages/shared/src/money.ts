@@ -7,10 +7,17 @@
  * through the `money()` constructor and its validation.
  */
 
-declare const MoneyBrand: unique symbol;
-
-/** An amount in paise. Negative values are allowed (refunds, ledger debits). */
-export type Money = bigint & { readonly [MoneyBrand]: 'paise' };
+/**
+ * An amount in paise. Negative values are allowed (refunds, ledger debits).
+ *
+ * The brand is a phantom property key, not a `unique symbol`: a symbol brand
+ * cannot be *named* when a downstream package emits declarations for anything
+ * involving Money (e.g. a zod schema typed `z.ZodType<Money>`), which breaks
+ * the build with TS4023. A string key is equally unforgeable in practice —
+ * bigint primitives cannot carry properties, so the brand exists only in the
+ * type system either way.
+ */
+export type Money = bigint & { readonly __moneyBrand: 'pipefix/paise' };
 
 export const ZERO: Money = 0n as Money;
 

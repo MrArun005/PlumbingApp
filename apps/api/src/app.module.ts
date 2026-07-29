@@ -19,6 +19,9 @@ import { OpsController } from './ops/ops.controller';
 import { OpsService } from './ops/ops.service';
 import { WebhooksController } from './payments/webhooks.controller';
 import { PAYMENT_GATEWAY, PaymentsService, StubGateway } from './payments/payments.service';
+import { CustomerQuotesController, PartnerJobsController } from './jobs/jobs.controller';
+import { JobsService } from './jobs/jobs.service';
+import { QuotesService } from './jobs/quotes.service';
 
 /**
  * Infrastructure is provided from validated env — nothing reads process.env
@@ -42,6 +45,8 @@ export class AppModule {
         PartnerAuthController,
         CatalogController,
         BookingsController,
+        CustomerQuotesController,
+        PartnerJobsController,
         WebhooksController,
         OpsController,
         HealthController,
@@ -57,6 +62,8 @@ export class AppModule {
         PaymentsService,
         IdempotencyService,
         OpsService,
+        JobsService,
+        QuotesService,
         // The real Razorpay client swaps in here once live keys + KYC exist.
         // Guarded so a stub can never be selected in production by accident.
         {

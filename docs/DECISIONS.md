@@ -138,3 +138,19 @@ Non-obvious choices only. Newest last.
 - **Consequence:** one extra write per idempotent request. Worth it — the
   alternative silently duplicates work under exactly the conditions idempotency
   exists to prevent.
+
+## D-012 · Only a PENDING quote is actionable; REVISED means superseded
+
+- **Context:** `QuoteStatus.REVISED` was being used for two different things —
+  "this is a revised quote" and "this quote was replaced" — and `approve()`
+  accepted both PENDING and REVISED. A test proved the consequence: after a
+  plumber sent a cheaper corrected quote, the customer could still approve the
+  older, higher one.
+- **Decision:** the newly-raised quote is always the only `PENDING` row; every
+  prior awaiting-decision quote flips to `REVISED`, which now means SUPERSEDED
+  and is not actionable. `approve()` and `decline()` accept `PENDING` only, and
+  re-approving an already-APPROVED quote stays a harmless no-op so a double-tap
+  does not error.
+- **Consequence:** a stale client gets a clear message ("your plumber sent an
+  updated quote") rather than silently accepting an outdated price. If a real
+  "superseded" enum value is ever added to the schema, rename in one place.
