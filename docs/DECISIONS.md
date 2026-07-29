@@ -92,3 +92,49 @@ Non-obvious choices only. Newest last.
 - **Consequence:** a new protected controller must remember its guard. Mitigated
   by an integration test asserting protected endpoints 401 without a token — add
   a case there for every new controller.
+
+## D-009 · An inspect-first booking is CONFIRMED without pre-payment
+
+- **Context:** The spec's booking machine goes DRAFT → PENDING_PAYMENT →
+  CONFIRMED. But when the plumber must inspect before a price exists, there is
+  nothing to charge at booking time; demanding a payment would mean inventing an
+  amount, which is the exact thing the product forbids.
+- **Options:** (a) pre-authorise the visit charge and confirm after; (b) allow
+  DRAFT → CONFIRMED for INSPECT_FIRST bookings only.
+- **Decision:** (b) for E2/E3. The state machine guard `requiresInspectFirst`
+  makes this legal _only_ in that mode — an UPFRONT booking still cannot skip
+  payment. Fake-booking risk is low on scheduled tiers; the emergency tiers keep
+  their ₹499 pre-auth (PLAN §3.2), which is where that risk actually lives.
+- **Consequence:** the visit charge is collected at the end (declined quote) or
+  folded into the approved quote. Revisit if no-show rates on inspect-first
+  bookings turn out high — (a) remains available.
+
+## D-010 · Raw SQL database objects live in one idempotent file, not in migrations
+
+- **Context:** PostGIS GiST indexes and partial unique indexes cannot be
+  expressed in `schema.prisma`. They were originally added inside the init
+  migration. When the next migration was generated, Prisma saw them as drift and
+  emitted `DROP INDEX` — silently removing all three GiST indexes. It did.
+- **Decision:** move them to `packages/db/prisma/sql/postgis-objects.sql`,
+  written idempotently (`CREATE ... IF NOT EXISTS`), applied by
+  `pnpm db:raw` which `db:migrate` runs after `prisma migrate deploy`.
+- **Consequence:** Prisma may still emit drops; the next migrate puts them back.
+  Any new raw object MUST go in that file, not in a migration. Verify with
+  `SELECT indexname FROM pg_indexes` after schema changes.
+
+## D-011 · Idempotency claims the key BEFORE running the handler
+
+- **Context:** The first implementation ran the handler and then stored the
+  response keyed by (endpoint, key). Under a genuine concurrent double-submit,
+  both requests ran the handler — both created a booking — and the one that lost
+  the key race returned the winner's response, leaving its own booking orphaned
+  in the database. A concurrency test caught it only after being strengthened to
+  count rows rather than compare returned ids.
+- **Decision:** two-phase. Insert a claim row first (`statusCode = 0`,
+  in-flight); only the winner runs the handler and then fills in the response.
+  A concurrent duplicate polls briefly, then replays the stored response or gets
+  a retryable 409. A handler failure deletes the claim so the key is not
+  poisoned forever.
+- **Consequence:** one extra write per idempotent request. Worth it — the
+  alternative silently duplicates work under exactly the conditions idempotency
+  exists to prevent.

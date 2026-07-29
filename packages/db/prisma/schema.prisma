@@ -78,6 +78,16 @@ enum UrgencyTier {
   E3
 }
 
+/// How a booking's price is established.
+/// UPFRONT       — catalogue price known at booking; customer pays first.
+/// INSPECT_FIRST — NO amount is shown or charged up front. The partner
+///                 inspects, raises an itemised quote, and the customer
+///                 approves it before any work starts.
+enum BookingPricingMode {
+  UPFRONT
+  INSPECT_FIRST
+}
+
 enum BookingStatus {
   DRAFT
   PENDING_PAYMENT
@@ -537,23 +547,24 @@ model SurgeWindow {
 // ─────────────────────── demand & fulfilment ───────────────────────
 
 model Booking {
-  id                  String        @id @default(cuid())
+  id                  String             @id @default(cuid())
   userId              String
   addressId           String
   urgencyTier         UrgencyTier
-  status              BookingStatus @default(DRAFT)
+  pricingMode         BookingPricingMode @default(UPFRONT)
+  status              BookingStatus      @default(DRAFT)
   scheduledSlotStart  DateTime?
   scheduledSlotEnd    DateTime?
   estimateTotalPaise  BigInt
   finalTotalPaise     BigInt?
-  surgeMultiplierX100 Int           @default(100) // frozen at booking
-  emergencyFeePaise   BigInt        @default(0)
+  surgeMultiplierX100 Int                @default(100) // frozen at booking
+  emergencyFeePaise   BigInt             @default(0)
   couponId            String?
   amcSubscriptionId   String?
-  priceRuleVersionIds Json          @default("[]") // PriceRule ids used for the estimate
-  idempotencyKey      String?       @unique
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  priceRuleVersionIds Json               @default("[]") // PriceRule ids used for the estimate
+  idempotencyKey      String?            @unique
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   user             User              @relation(fields: [userId], references: [id])
   address          Address           @relation(fields: [addressId], references: [id])

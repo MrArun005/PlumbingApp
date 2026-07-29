@@ -7,9 +7,30 @@ _Last updated: 2026-07-29_
 
 ## Current work order
 
-**WO-05 · Booking flow (E2/E3)** — next up (not started).
+**WO-06/07 · Partner + customer apps** — customer web UI in progress.
 
 ## What is DONE
+
+- **WO-05 · Booking flow (E2/E3)** ✅
+  - **State machines** in `packages/shared/state-machines`: booking + job
+    lifecycles declared explicitly, illegal moves throw
+    `InvalidTransitionError`. Guards are pure and executable — 100 m arrival
+    geofence, start/end OTP, quote-approval-before-work, after-photo above
+    ₹1,000, settled payment before completion, and the **sewer/manhole PPE hard
+    block** (manual entry is illegal in India; not overridable). 42 tests.
+  - **Two pricing paths.** `UPFRONT` computes a full frozen estimate and takes
+    payment first. **`INSPECT_FIRST` quotes no amount at all** — estimate is
+    null, unit prices are null, booking confirms with nothing to pay, and the
+    price arrives as an on-site quote the customer approves. Forced on for
+    INSPECTION_FIRST / QUOTE_ONLY SKUs regardless of what the client asks.
+  - **Idempotency** on every mutating endpoint via claim-then-execute (D-011),
+    proven by a concurrency test that counts rows.
+  - Payments behind a `PaymentGateway` seam (stub today; production boot
+    **refuses to start** without a real gateway), replay-safe Razorpay webhook
+    with signature verification, manual ops assign creating the Job + append-only
+    timeline entry.
+  - 27 booking tests; 62 API tests total, repeatable with zero DB residue.
+    Walked live: both pricing paths, and book → pay → webhook → ASSIGNED.
 
 - **WO-04 · Auth + catalog API** ✅
   - `apps/api` (NestJS 10): phone-OTP auth (hashed codes in Redis, single-use,

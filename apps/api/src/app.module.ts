@@ -11,6 +11,14 @@ import { TokenService } from './auth/token.service';
 import { CatalogController } from './catalog/catalog.controller';
 import { CatalogService } from './catalog/catalog.service';
 import { HealthController } from './health/health.controller';
+import { BookingsController } from './bookings/bookings.controller';
+import { BookingsService } from './bookings/bookings.service';
+import { PriceRulesService } from './bookings/price-rules.service';
+import { IdempotencyService } from './common/idempotency.service';
+import { OpsController } from './ops/ops.controller';
+import { OpsService } from './ops/ops.service';
+import { WebhooksController } from './payments/webhooks.controller';
+import { PAYMENT_GATEWAY, PaymentsService, StubGateway } from './payments/payments.service';
 
 /**
  * Infrastructure is provided from validated env — nothing reads process.env
@@ -29,13 +37,39 @@ export function infraProviders(env: ApiEnv): Provider[] {
 export class AppModule {
   static forEnv(env: ApiEnv) {
     @Module({
-      controllers: [AuthController, PartnerAuthController, CatalogController, HealthController],
+      controllers: [
+        AuthController,
+        PartnerAuthController,
+        CatalogController,
+        BookingsController,
+        WebhooksController,
+        OpsController,
+        HealthController,
+      ],
       providers: [
         ...infraProviders(env),
         OtpService,
         TokenService,
         AuthService,
         CatalogService,
+        BookingsService,
+        PriceRulesService,
+        PaymentsService,
+        IdempotencyService,
+        OpsService,
+        // The real Razorpay client swaps in here once live keys + KYC exist.
+        // Guarded so a stub can never be selected in production by accident.
+        {
+          provide: PAYMENT_GATEWAY,
+          useFactory: () => {
+            if (env.NODE_ENV === 'production') {
+              throw new Error(
+                'No production payment gateway is configured. Wire Razorpay before deploying to production.',
+              );
+            }
+            return new StubGateway();
+          },
+        },
         // Guards are applied PER CONTROLLER, never globally: this API serves two
         // different audiences, and a global guard cannot know which audience a
         // route belongs to (a customer-only global guard would 403 every partner
